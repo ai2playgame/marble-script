@@ -15,6 +15,8 @@ public class Lexer
 
     public Token NextToken()
     {
+        SkipWhiteSpace(); // 空白は読み飛ばす仕様
+        
         Token token = CurrentChar switch
         {
             '=' => new Token(TokenType.ASSIGN, CurrentChar.ToString()),
@@ -42,6 +44,15 @@ public class Lexer
         Position += 1;
     }
 
+    private void SkipWhiteSpace()
+    {
+        // 半角スペース,タブ文字,改行文字を読み飛ばす
+        while (CurrentChar is ' ' or '\t' or '\r' or '\n')
+        {
+            ReadChar();
+        }
+    }
+
     private Token ReadDefaultPatternToken()
     {
         if (IsLetter(CurrentChar))
@@ -49,6 +60,11 @@ public class Lexer
             var identifier = ReadIdentifier();
             var type = LookupIdentifier(identifier);
             return new Token(type, identifier);
+        }
+        else if (IsDigit(CurrentChar))
+        {
+            var number = ReadNumber();
+            return new Token(TokenType.INT, number);
         }
 
         return new Token(TokenType.ILLEGAL, CurrentChar.ToString());
@@ -68,9 +84,28 @@ public class Lexer
         return identifier;
     }
 
+    private string ReadNumber()
+    {
+        var number = CurrentChar.ToString();
+        
+        // 次の文字が数字であれば引き続きそれを読み取って加える
+        while (IsDigit(NextChar))
+        {
+            number += NextChar;
+            ReadChar();
+        }
+
+        return number;
+    }
+
     private bool IsLetter(char c)
     {
         return c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or ('_');
+    }
+
+    private bool IsDigit(char c)
+    {
+        return c is >= '0' and <= '9';
     }
     
     // 渡された識別子に対応するTokenTypeを返す
