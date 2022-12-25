@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "marble-script", "marble-script\marble-script.csproj", "{39AC4253-18EB-4CC1-9490-89C16ECA7114}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "marble-script-test", "marble-script-test\marble-script-test.csproj", "{4803273F-28E3-4F0B-A7A3-EAD1EBB44FE8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{39AC4253-18EB-4CC1-9490-89C16ECA7114}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39AC4253-18EB-4CC1-9490-89C16ECA7114}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39AC4253-18EB-4CC1-9490-89C16ECA7114}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39AC4253-18EB-4CC1-9490-89C16ECA7114}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4803273F-28E3-4F0B-A7A3-EAD1EBB44FE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4803273F-28E3-4F0B-A7A3-EAD1EBB44FE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4803273F-28E3-4F0B-A7A3-EAD1EBB44FE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4803273F-28E3-4F0B-A7A3-EAD1EBB44FE8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
