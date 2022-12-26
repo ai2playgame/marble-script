@@ -19,8 +19,14 @@ public class Lexer
         
         Token token = CurrentChar switch
         {
-            '=' => new Token(TokenType.ASSIGN, CurrentChar.ToString()),
+            '=' => StartWithEqualToken(),
             '+' => new Token(TokenType.PLUS, CurrentChar.ToString()),
+            '-' => new Token(TokenType.MINUS, CurrentChar.ToString()),
+            '*' => new Token(TokenType.ASTERISK, CurrentChar.ToString()),
+            '/' => new Token(TokenType.SLASH, CurrentChar.ToString()),
+            '!' => StartWithBangToken(),
+            '>' => new Token(TokenType.GT, CurrentChar.ToString()),
+            '<' => new Token(TokenType.LT, CurrentChar.ToString()),
             '(' => new Token(TokenType.LPAREN, CurrentChar.ToString()),
             ')' => new Token(TokenType.RPAREN, CurrentChar.ToString()),
             '{' => new Token(TokenType.LBRACE, CurrentChar.ToString()),
@@ -44,6 +50,36 @@ public class Lexer
         Position += 1;
     }
 
+    // =から始まるトークンを処理する
+    private Token StartWithEqualToken()
+    {
+        if (this.NextChar == '=')
+        {
+            // ==演算子
+            this.ReadChar(); // 1文字読み進める
+            return new Token(TokenType.EQ, "==");
+        }
+        else
+        {
+            return new Token(TokenType.ASSIGN, CurrentChar.ToString());
+        }
+    }
+
+    // !から始まるTokenを処理する
+    private Token StartWithBangToken()
+    {
+        if (this.NextChar == '=')
+        {
+            // !=演算子
+            this.ReadChar(); // 1文字読み進める
+            return new Token(TokenType.NOT_EQ, "!=");
+        }
+        else
+        {
+            return new Token(TokenType.BANG, CurrentChar.ToString());
+        }
+    }
+    
     private void SkipWhiteSpace()
     {
         // 半角スペース,タブ文字,改行文字を読み飛ばす
@@ -119,7 +155,12 @@ public class Lexer
     private static readonly Dictionary<string, TokenType> Keywords
         = new()
         {
-            { "let", TokenType.LET },
             { "fn", TokenType.FUNCTION },
+            { "let", TokenType.LET },
+            { "if", TokenType.IF },
+            { "else", TokenType.ELSE },
+            { "return", TokenType.RETURN },
+            { "true", TokenType.TRUE },
+            { "false", TokenType.FALSE },
         };
 }
