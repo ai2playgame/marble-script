@@ -1,6 +1,6 @@
 ﻿namespace Marble.Processor.AST.Expression;
 
-// 識別子
+// 識別子: 束縛されている値を評価する式のこと
 public class Identifier : IExpression
 {
     public Token Token { get; set; }

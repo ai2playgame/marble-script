@@ -4,27 +4,44 @@ using Marble.Processor.AST.Statements;
 
 namespace Marble.Processor.Parsing
 {
+    // 前置構文解析関数
+    using PrefixParseFn = Func<IExpression>;
+    // 中置構文解析関数
+    using InfixParseFn = Func<IExpression, IExpression>;
+
     public class Parser
     {
         public Token CurrentToken { get; set; }
         public Token NextToken { get; set; }
         public Lexer Lexer { get; }
-        public List<string> Errors { get; set; } = new List<string>();
+        public List<string> Errors { get; set; }
+
+        public Dictionary<TokenType, PrefixParseFn> PrefixParseFns { get; set; }
+        public Dictionary<TokenType, InfixParseFn> InfixParseFns { get; set; }
 
         public Parser(Lexer lexer)
         {
+            // フィールド初期化
             Lexer = lexer;
+            Errors = new();
+            
+            // トークンの種別と、前置構文解析関数を紐づける
+            RegisterPrefixParseFns();
+            InfixParseFns = new();
         
             // 2つ分のトークンを先に読み込んでおく
             CurrentToken = Lexer.NextToken();
             NextToken = Lexer.NextToken();
+            Errors = new List<string>();
         }
 
         // 式をパースして、ASTを構築し、ルートに追加していく
         public Root ParseProgram()
         {
-            var root = new Root();
-            root.Statements = new List<IStatement>();
+            var root = new Root
+            {
+                Statements = new List<IStatement>()
+            };
             while (CurrentToken.Type != TokenType.EOF)
             {
                 var statement = ParseStatement();
@@ -50,7 +67,7 @@ namespace Marble.Processor.Parsing
             {
                 TokenType.LET => ParseLetStatement(),
                 TokenType.RETURN => ParseReturnStatement(),
-                _ => null
+                _ => ParseExpressionStatement(), // let,return以外は式文として処理する
             };
         }
 
@@ -58,8 +75,10 @@ namespace Marble.Processor.Parsing
         private LetStatement? ParseLetStatement()
         {
             // let文は "let <identifier> = <expression>;
-            var statement = new LetStatement();
-            statement.Token = CurrentToken;
+            var statement = new LetStatement
+            {
+                Token = CurrentToken
+            };
 
             if (!ExpectPeek(TokenType.IDENT))
                 return null;
@@ -83,11 +102,13 @@ namespace Marble.Processor.Parsing
         }
 
         // return文を読み取る
-        private ReturnStatement ParseReturnStatement()
+        private ReturnStatement? ParseReturnStatement()
         {
-            var statement = new ReturnStatement();
-            // "return"部分をstatementに登録する
-            statement.Token = CurrentToken;
+            var statement = new ReturnStatement
+            {
+                // "return"部分をTokenとして登録する
+                Token = CurrentToken
+            };
             ReadToken();
             
             // TODO: 後で実装。一旦「;」まで読み取る実装にした
@@ -98,6 +119,33 @@ namespace Marble.Processor.Parsing
             }
 
             return statement;
+        }
+        
+        // 式を読み取る
+        private ExpressionStatement? ParseExpressionStatement()
+        {
+            var statement = new ExpressionStatement
+            {
+                HeadToken = CurrentToken,
+                Expression = ParseExpression(Precedence.Lowest)
+            };
+
+            // セミコロンを読み飛ばす（省略可能）
+            if (NextToken.Type == TokenType.SEMICOLON)
+            {
+                ReadToken();
+            }
+
+            return statement;
+        }
+
+        private IExpression? ParseExpression(Precedence precedence)
+        {
+            PrefixParseFns.TryGetValue(CurrentToken.Type, out var prefix);
+            
+            if (prefix == null) return null;
+            var leftExpression = prefix();
+            return leftExpression;
         }
 
         private bool ExpectPeek(TokenType type)
@@ -114,6 +162,17 @@ namespace Marble.Processor.Parsing
             return false;
         }
 
+        private void RegisterPrefixParseFns()
+        {
+            PrefixParseFns = new Dictionary<TokenType, PrefixParseFn>();
+            PrefixParseFns.Add(TokenType.IDENT, ParseIdentifier);
+        }
+
+        private IExpression ParseIdentifier()
+        {
+            return new Identifier(CurrentToken, CurrentToken.Literal);
+        }
+        
         private void AddNextTokenError(TokenType expected, TokenType actual)
         {
             Errors.Add($"{actual.ToString()}ではなく、{expected.ToString()}が渡されなければならない");
