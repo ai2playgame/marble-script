@@ -1,4 +1,4 @@
-﻿namespace Marble.Lexing;
+﻿namespace Marble.Processor;
 
 public record Token(TokenType Type, string Literal);
 public enum TokenType

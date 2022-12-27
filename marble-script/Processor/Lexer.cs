@@ -1,4 +1,4 @@
-﻿namespace Marble.Lexing;
+﻿namespace Marble.Processor;
 
 public class Lexer
 {
