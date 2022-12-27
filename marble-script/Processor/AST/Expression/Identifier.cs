@@ -1,5 +1,6 @@
 ﻿namespace Marble.Processor.AST.Expression;
 
+// 識別子
 public class Identifier : IExpression
 {
     public Token Token { get; set; }
@@ -12,4 +13,5 @@ public class Identifier : IExpression
     }
 
     public string TokenLiteral() => Token.Literal;
+    public string ToCode() => Token.Literal;
 }

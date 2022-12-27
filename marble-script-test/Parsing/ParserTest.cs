@@ -32,9 +32,9 @@ let xyz = 636363;";
             // エラーがあれば、そのメッセージを表示する
             parser.Errors.ForEach(errorMessage =>
             {
-                errorMessages.Append($"{errorMessage}\n");
+                errorMessages.AppendLine(errorMessage);
             });
-            Assert.Fail(errorMessages.ToString());
+            Assert.Fail(errorMessages.ToString().TrimEnd());
         }
         
         Assert.That(root.Statements.Count, Is.EqualTo(3), "文の数が間違っています");
@@ -73,5 +73,31 @@ let xyz = 636363;";
         Root root = parser.ParseProgram();
 
         Assert.That(parser.Errors.Count, Is.EqualTo(1));
+    }
+    
+    [Test]
+    public void TestReadReturnStatement1()
+    {
+        var input = @"return 5;
+return 10;
+return = 9332222;";
+
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        Root root = parser.ParseProgram();
+        
+        Assert.That(root.Statements.Count, Is.EqualTo(3), "return文の数が間違っています");
+
+        foreach (var statement in root.Statements)
+        {
+            var returnStatement = statement as ReturnStatement;
+            if (returnStatement == null)
+            {
+                Assert.Fail("statementがReturnStatementではない");
+                return;
+            }
+            Assert.That(returnStatement.TokenLiteral(), Is.EqualTo("return"),
+                "returnのリテラルが間違っている");
+        }
     }
 }

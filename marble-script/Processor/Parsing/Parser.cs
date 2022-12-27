@@ -46,13 +46,12 @@ namespace Marble.Processor.Parsing
 
         private IStatement? ParseStatement()
         {
-            switch (CurrentToken.Type)
+            return CurrentToken.Type switch
             {
-                case TokenType.LET:
-                    return ParseLetStatement();
-                default:
-                    return null;
-            }
+                TokenType.LET => ParseLetStatement(),
+                TokenType.RETURN => ParseReturnStatement(),
+                _ => null
+            };
         }
 
         // let文を読んでStatementオブジェクトを生成する
@@ -74,6 +73,24 @@ namespace Marble.Processor.Parsing
             
             // Expression（let文の右辺に当たる式）
             // TODO: let文の右辺式判定は未完成。一旦セミコロンまでを1Statementとして扱う
+            while (CurrentToken.Type != TokenType.SEMICOLON)
+            {
+                // セミコロンが見つかるまで読み進める
+                ReadToken();
+            }
+
+            return statement;
+        }
+
+        // return文を読み取る
+        private ReturnStatement ParseReturnStatement()
+        {
+            var statement = new ReturnStatement();
+            // "return"部分をstatementに登録する
+            statement.Token = CurrentToken;
+            ReadToken();
+            
+            // TODO: 後で実装。一旦「;」まで読み取る実装にした
             while (CurrentToken.Type != TokenType.SEMICOLON)
             {
                 // セミコロンが見つかるまで読み進める

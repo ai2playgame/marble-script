@@ -1,4 +1,6 @@
-﻿namespace Marble.Processor.AST;
+﻿using System.Text;
+
+namespace Marble.Processor.AST;
 
 // ルートノードは、実行するプログラムを子要素として保持する。
 // Marbleはlet文（let a = 1 + 1;) のような、文の集まりで構成される。
@@ -11,5 +13,12 @@ public class Root : INode
     public string TokenLiteral()
     {
         return Statements.FirstOrDefault()?.TokenLiteral() ?? "";
+    }
+
+    public string ToCode()
+    {
+        var builder = new StringBuilder();
+        Statements.ForEach(ast => builder.AppendLine(ast.ToCode()));
+        return builder.ToString().TrimEnd();
     }
 }
