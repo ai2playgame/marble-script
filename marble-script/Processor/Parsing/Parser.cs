@@ -9,6 +9,7 @@ namespace Marble.Processor.Parsing
         public Token CurrentToken { get; set; }
         public Token NextToken { get; set; }
         public Lexer Lexer { get; }
+        public List<string> Errors { get; set; } = new List<string>();
 
         public Parser(Lexer lexer)
         {
@@ -17,11 +18,6 @@ namespace Marble.Processor.Parsing
             // 2つ分のトークンを先に読み込んでおく
             CurrentToken = Lexer.NextToken();
             NextToken = Lexer.NextToken();
-        }
-
-        public Root? ParseRoot()
-        {
-            return null;
         }
 
         // 式をパースして、ASTを構築し、ルートに追加していく
@@ -47,7 +43,6 @@ namespace Marble.Processor.Parsing
             CurrentToken = NextToken;
             NextToken = Lexer.NextToken();
         }
-
 
         private IStatement? ParseStatement()
         {
@@ -78,7 +73,7 @@ namespace Marble.Processor.Parsing
                 return null;
             
             // Expression（let文の右辺に当たる式）
-            // TODO: let文の右辺式判定は未完成
+            // TODO: let文の右辺式判定は未完成。一旦セミコロンまでを1Statementとして扱う
             while (CurrentToken.Type != TokenType.SEMICOLON)
             {
                 // セミコロンが見つかるまで読み進める
@@ -88,16 +83,23 @@ namespace Marble.Processor.Parsing
             return statement;
         }
 
-        // 次のトークンが期待するものであれば読み進める
         private bool ExpectPeek(TokenType type)
         {
+            // 次のトークンが期待するものであれば読み進める
             if (NextToken.Type == type)
             {
                 ReadToken();
                 return true;
             }
-
+            
+            // 文法エラーメッセージを登録する
+            AddNextTokenError(type, NextToken.Type);
             return false;
+        }
+
+        private void AddNextTokenError(TokenType expected, TokenType actual)
+        {
+            Errors.Add($"{actual.ToString()}ではなく、{expected.ToString()}が渡されなければならない");
         }
     }
     
