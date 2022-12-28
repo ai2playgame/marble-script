@@ -166,11 +166,31 @@ namespace Marble.Processor.Parsing
         {
             PrefixParseFns = new Dictionary<TokenType, PrefixParseFn>();
             PrefixParseFns.Add(TokenType.IDENT, ParseIdentifier);
+            PrefixParseFns.Add(TokenType.INT, ParseIntegerLiteral);
         }
 
+        // 識別子式を生成する解析関数
         private IExpression ParseIdentifier()
         {
             return new Identifier(CurrentToken, CurrentToken.Literal);
+        }
+
+        // 整数リテラルを生成する
+        private IExpression? ParseIntegerLiteral()
+        {
+            // 文字列リテラルを整数値に変換
+            if (int.TryParse(CurrentToken.Literal, out int result))
+            {
+                return new IntegerLiteral()
+                {
+                    Token = CurrentToken,
+                    Value = result,
+                };
+            }
+            // 型変換失敗
+            var message = $"{CurrentToken.Literal}をintegerに変換できません";
+            Errors.Add(message);
+            return null;
         }
         
         private void AddNextTokenError(TokenType expected, TokenType actual)
