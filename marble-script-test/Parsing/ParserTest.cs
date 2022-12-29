@@ -64,18 +64,6 @@ let xyz = 636363;";
     }
 
     [Test]
-    public void TestIllegalLetStatement()
-    {
-        var input = @"let x = ;";
-
-        var lexer = new Lexer(input);
-        var parser = new Parser(lexer);
-        Root root = parser.ParseProgram();
-
-        Assert.That(parser.Errors.Count, Is.EqualTo(1));
-    }
-    
-    [Test]
     public void TestReadReturnStatement1()
     {
         var input = @"return 5;

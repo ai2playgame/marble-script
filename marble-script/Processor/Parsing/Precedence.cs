@@ -2,11 +2,11 @@
 
 public enum Precedence
 {
-    Lowest = 1,
-    EqualTwo,    // ==
-    LessGreater, // >, <
-    Sum,         // +
-    Product,     // *
-    Prefix,      // -x, !x
-    Call,        // myFunction(x)
+    LOWEST = 1,
+    EQUALS,      // ==
+    LESSGREATER, // >, <
+    SUM,         // +
+    PRODUCT,     // *
+    PREFIX,      // -x, !x
+    CALL,        // myFunction(x)
 }

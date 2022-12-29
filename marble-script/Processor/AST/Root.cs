@@ -18,7 +18,10 @@ public class Root : INode
     public string ToCode()
     {
         var builder = new StringBuilder();
-        Statements.ForEach(ast => builder.AppendLine(ast.ToCode()));
+        foreach (var ast in Statements)
+        {
+            builder.AppendLine(ast.ToCode());
+        }
         return builder.ToString().TrimEnd();
     }
 }
