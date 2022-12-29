@@ -246,6 +246,9 @@ namespace Marble.Processor.Parsing
 
             // 左括弧 "("
             PrefixParseFns.Add(TokenType.LPAREN, ParseGroupedExpression);
+
+            // 左ブロック文括弧 "{"
+            PrefixParseFns.Add(TokenType.IF, ParseIfExpression);
         }
 
         private void RegisterInfixParseFns()
@@ -296,6 +299,44 @@ namespace Marble.Processor.Parsing
             };
         }
 
+        private IExpression? ParseIfExpression()
+        {
+            var expression = new IfExpression()
+            {
+                Token = CurrentToken, // IF
+            };
+
+            // ifの直後は括弧 (でなければならない
+            if (!ExpectPeek(TokenType.LPAREN)) return null;
+
+            // 括弧を読み飛ばす
+            ReadToken();
+
+            // ifの条件式を解析する
+            expression.Condition = ParseExpression(Precedence.LOWEST);
+
+            // ") {"と続く
+            if (!ExpectPeek(TokenType.RPAREN)) return null;
+            if (!ExpectPeek(TokenType.LBRACE)) return null;
+
+            // {から始まるブロック文を解析する
+            expression.Consequence = ParseBlockStatement();
+
+            // else句がなければ、ここでreturnする
+            if (NextToken.Type != TokenType.ELSE)
+                return expression;
+
+            // else句を解析する
+            ReadToken(); // elseまで読み進める
+
+            // elseの後は"{"
+            if (!ExpectPeek(TokenType.LBRACE)) return null;
+            // "{"から始まるelse句のブロック文を解析する
+            expression.Alternative = ParseBlockStatement();
+
+            return expression;
+        }
+
         // 括弧で囲むと演算の優先順位を調整できるように
         private IExpression? ParseGroupedExpression()
         {
@@ -309,6 +350,35 @@ namespace Marble.Processor.Parsing
             if (!ExpectPeek(TokenType.RPAREN)) return null;
 
             return expression;
+        }
+
+        // ブロック文を解析する
+        public BlockStatement ParseBlockStatement()
+        {
+            var block = new BlockStatement()
+            {
+                Token = CurrentToken, // "{"
+                Statements = new List<IStatement>(),
+            };
+
+            // "{"を読み飛ばす
+            ReadToken();
+
+            while (CurrentToken.Type != TokenType.RBRACE &&
+                   CurrentToken.Type != TokenType.EOF)
+            {
+                // ブロックの中身を解析する
+                var statement = ParseStatement();
+                if (statement != null)
+                {
+                    // 1文ずつParseして、Listに追加していく
+                    block.Statements.Add(statement);
+                }
+
+                ReadToken();
+            }
+
+            return block;
         }
 
         // 前置演算子を処理する

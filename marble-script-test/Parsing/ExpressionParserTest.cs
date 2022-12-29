@@ -327,4 +327,116 @@ public class ExpressionParserTest
         Assert.That(infixExpression.Operator, Is.EqualTo(op));
         _TestLiteralExpression(infixExpression.Rhs, right);
     }
+
+    [Test]
+    public void TestReadIfExpression()
+    {
+        var input = "if (x < y) { x }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っている");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        if (statement == null)
+        {
+            Assert.Fail("statementがExpressionStatementではない");
+            return;
+        }
+
+        var expression = statement.Expression as IfExpression;
+        if (expression == null)
+        {
+            Assert.Fail("expressionがIfExpressionではない");
+            return;
+        }
+
+        // If条件部分 (x < y)が正しくparseできてるか調べる
+        _TestInfixExpression(expression.Condition, "x", "<", "y");
+
+        // consequence部分をテスト
+        Assert.That(expression.Consequence.Statements.Count, Is.EqualTo(1));
+        var consequence = expression.Consequence.Statements[0] as ExpressionStatement;
+        if (consequence == null)
+        {
+            Assert.Fail("consequenceがExpressionStatementではない");
+            return;
+        }
+
+        _TestIdentifier(consequence.Expression, "x");
+
+        // else部分は存在しない
+        Assert.That(expression.Alternative, Is.Null);
+    }
+
+    [Test]
+    public void TestReadIfElseExpression()
+    {
+        var input = "if (x < y) { x } else { y; }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っている");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        if (statement == null)
+        {
+            Assert.Fail("statementがExpressionStatementではない");
+            return;
+        }
+
+        var expression = statement.Expression as IfExpression;
+        if (expression == null)
+        {
+            Assert.Fail("expressionがIfExpressionではない");
+            return;
+        }
+
+        // If条件部分 (x < y)が正しくparseできてるか調べる
+        _TestInfixExpression(expression.Condition, "x", "<", "y");
+
+        // consequence部分をテスト
+        Assert.That(expression.Consequence.Statements.Count, Is.EqualTo(1));
+        var consequence = expression.Consequence.Statements[0] as ExpressionStatement;
+        if (consequence == null)
+        {
+            Assert.Fail("consequenceがExpressionStatementではない");
+            return;
+        }
+
+        _TestIdentifier(consequence.Expression, "x");
+
+        // alternative部分をテスト
+        if (expression.Alternative == null)
+        {
+            Assert.Fail("alternative部分がnull");
+            return;
+        }
+
+        Assert.That(expression.Alternative.Statements.Count, Is.EqualTo(1));
+        var alternative = expression.Alternative.Statements[0] as ExpressionStatement;
+        if (alternative == null)
+        {
+            Assert.Fail("alternativeがExpressionStatementではない");
+            return;
+        }
+
+        _TestIdentifier(alternative.Expression, "y");
+    }
 }
