@@ -165,16 +165,7 @@ public class ExpressionParserTest
                 return;
             }
 
-            var expression = statement.Expression as InfixExpression;
-            if (expression == null)
-            {
-                Assert.Fail("expressionがInFixExpression(中置式）ではない");
-                return;
-            }
-
-            _TestIntegerLiteral(expression.Lhs, lhs);
-            Assert.That(expression.Operator, Is.EqualTo(op));
-            _TestIntegerLiteral(expression.Rhs, rhs);
+            _TestInfixExpression(statement.Expression, lhs, op, rhs);
         }
     }
 
@@ -233,5 +224,47 @@ public class ExpressionParserTest
             var actual = root.ToCode();
             Assert.That(actual, Is.EqualTo(code));
         }
+    }
+
+    private void _TestIdentifier(IExpression expression, string value)
+    {
+        var ident = expression as Identifier;
+        if (ident == null)
+        {
+            Assert.Fail("ExpressionがIdentifierではない");
+            return;
+        }
+        Assert.That(ident.Value, Is.EqualTo(value));
+        Assert.That(ident.TokenLiteral(), Is.EqualTo(value));
+    }
+
+    private void _TestLiteralExpression(IExpression expression, object expected)
+    {
+        switch (expected)
+        {
+            case int intValue:
+                _TestIntegerLiteral(expression, intValue);
+                break;
+            case string stringValue:
+                _TestIdentifier(expression, stringValue);
+                break;
+            default:
+                Assert.Fail("予期しない型です");
+                break;
+        }
+    }
+
+    private void _TestInfixExpression(IExpression expression, object left, string op, object right)
+    {
+        var infixExpression = expression as InfixExpression;
+        if (infixExpression == null)
+        {
+            Assert.Fail("expressionがInfixExpressionではない");
+            return;
+        }
+        
+        _TestLiteralExpression(infixExpression.Lhs, left);
+        Assert.That(infixExpression.Operator, Is.EqualTo(op));
+        _TestLiteralExpression(infixExpression.Rhs, right);
     }
 }
