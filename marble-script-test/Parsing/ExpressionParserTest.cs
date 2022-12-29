@@ -79,4 +79,57 @@ public class ExpressionParserTest
         Assert.That(integerLiteral.Value, Is.EqualTo(123));
         Assert.That(integerLiteral.TokenLiteral(), Is.EqualTo("123"));
     }
+
+    [Test]
+    public void TestReadPrefixExpression()
+    {
+        var tests = new[]
+        {
+            ("!5", "1", 5),
+            ("-15", "-", 15),
+        };
+
+        foreach (var (input, op, value) in tests)
+        {
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+
+            // エラーがないか確認する
+            if (parser.Errors.Count != 0)
+            {
+                Assert.Fail("エラーが検出されました。");
+                return;
+            }
+
+            // 文の数は1つ
+            Assert.That(root.Statements.Count, Is.EqualTo(1));
+
+            var statement = root.Statements[0] as ExpressionStatement;
+            if (statement == null)
+            {
+                Assert.Fail("statementがExpressionStatement(式文)ではない");
+                return;
+            }
+
+            var expression = statement.Expression as PrefixExpression;
+            if (expression == null)
+            {
+                Assert.Fail("expressionがPrefixExpression（前置式）ではない");
+                return;
+            }
+
+            Assert.That(expression.Operator, Is.EqualTo(op));
+
+            var integerLiteral = expression.Right as IntegerLiteral;
+            if (integerLiteral == null)
+            {
+                Assert.Fail("ExpressionがIntegerLiteralではない");
+                return;
+            }
+
+            Assert.That(integerLiteral.Value, Is.EqualTo(value));
+            Assert.That(integerLiteral.TokenLiteral(), Is.EqualTo(value.ToString()));
+        }
+    }
 }
