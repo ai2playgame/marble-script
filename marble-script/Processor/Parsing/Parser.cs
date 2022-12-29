@@ -243,6 +243,9 @@ namespace Marble.Processor.Parsing
             // 真偽値リテラル
             PrefixParseFns.Add(TokenType.TRUE, ParseBooleanLiteral);
             PrefixParseFns.Add(TokenType.FALSE, ParseBooleanLiteral);
+
+            // 左括弧 "("
+            PrefixParseFns.Add(TokenType.LPAREN, ParseGroupedExpression);
         }
 
         private void RegisterInfixParseFns()
@@ -291,6 +294,21 @@ namespace Marble.Processor.Parsing
                 Token = CurrentToken,
                 Value = CurrentToken.Type == TokenType.TRUE,
             };
+        }
+
+        // 括弧で囲むと演算の優先順位を調整できるように
+        private IExpression? ParseGroupedExpression()
+        {
+            // "("を読み飛ばす
+            ReadToken();
+
+            // カッコ内の式を解析する
+            var expression = ParseExpression(Precedence.LOWEST);
+
+            // 閉じカッコ")"がないと、エラーになる
+            if (!ExpectPeek(TokenType.RPAREN)) return null;
+
+            return expression;
         }
 
         // 前置演算子を処理する

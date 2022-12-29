@@ -208,6 +208,12 @@ public class ExpressionParserTest
             ("true", "true"),
             ("true == false", "(true == false)"),
             ("1 > 2 == false", "((1 > 2) == false)"),
+            ("(1 + 2) * 3", "((1 + 2) * 3)"),
+            ("1 + (2 - 3)", "(1 + (2 - 3))"),
+            ("-(1 + 2)", "(-(1 + 2))"),
+            ("!(true == true)", "(!(true == true))"),
+            ("1 + (2 - 3) * 4", "(1 + ((2 - 3) * 4))"),
+            ("(1 + -(2 + 3)) * 4", "((1 + (-(2 + 3))) * 4)"),
         };
 
         foreach (var (input, code) in tests)
