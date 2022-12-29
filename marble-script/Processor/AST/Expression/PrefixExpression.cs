@@ -6,6 +6,6 @@ public class PrefixExpression : IExpression
     public string Operator { get; set; }
     public IExpression Right { get; set; }
 
-    public string ToCode() => $"{Operator}{Right.ToCode()}";
+    public string ToCode() => $"({Operator}{Right.ToCode()})";
     public string TokenLiteral() => Token.Literal;
 }
