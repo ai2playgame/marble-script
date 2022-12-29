@@ -85,7 +85,7 @@ public class ExpressionParserTest
     {
         var tests = new[]
         {
-            ("!5", "1", 5),
+            ("!5", "!", 5),
             ("-15", "-", 15),
         };
 
