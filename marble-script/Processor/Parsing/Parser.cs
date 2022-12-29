@@ -239,6 +239,10 @@ namespace Marble.Processor.Parsing
             // 前置演算子
             PrefixParseFns.Add(TokenType.BANG, ParsePrefixExpression);  // 前置!演算子
             PrefixParseFns.Add(TokenType.MINUS, ParsePrefixExpression); // 前置-演算子
+
+            // 真偽値リテラル
+            PrefixParseFns.Add(TokenType.TRUE, ParseBooleanLiteral);
+            PrefixParseFns.Add(TokenType.FALSE, ParseBooleanLiteral);
         }
 
         private void RegisterInfixParseFns()
@@ -277,6 +281,16 @@ namespace Marble.Processor.Parsing
             var message = $"{CurrentToken.Literal}をintegerに変換できません";
             Errors.Add(message);
             return null;
+        }
+
+        // 真偽値リテラルを生成する
+        private IExpression ParseBooleanLiteral()
+        {
+            return new BooleanLiteral()
+            {
+                Token = CurrentToken,
+                Value = CurrentToken.Type == TokenType.TRUE,
+            };
         }
 
         // 前置演算子を処理する

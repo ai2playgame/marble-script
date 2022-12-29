@@ -130,7 +130,7 @@ public class ExpressionParserTest
     [Test]
     public void TestReadInfixExpression()
     {
-        var tests = new[]
+        var tests = new (string, object, string, object)[]
         {
             ("1 + 1", 1, "+", 1),
             ("1 - 1", 1, "-", 1),
@@ -140,6 +140,8 @@ public class ExpressionParserTest
             ("1 > 1", 1, ">", 1),
             ("1 == 1", 1, "==", 1),
             ("1 != 1", 1, "!=", 1),
+            ("true == false", true, "==", false),
+            ("true != false", true, "!=", false),
         };
 
         foreach (var (input, lhs, op, rhs) in tests)
@@ -188,7 +190,7 @@ public class ExpressionParserTest
             Assert.Fail($"ident.TokenLiteral が {value} ではありません。");
         }
     }
-    
+
     [Test]
     public void TestOperatorPrecedenceParsing()
     {
@@ -203,6 +205,9 @@ public class ExpressionParserTest
             ("1 + 2; -3 * 4", "(1 + 2)\r\n((-3) * 4)"),
             ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
             ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+            ("true", "true"),
+            ("true == false", "(true == false)"),
+            ("1 > 2 == false", "((1 > 2) == false)"),
         };
 
         foreach (var (input, code) in tests)
@@ -211,19 +216,64 @@ public class ExpressionParserTest
             var parser = new Parser(lexer);
             var root = parser.ParseProgram();
 
-            foreach (var error in parser.Errors)
-            {
-                Console.WriteLine(error);
-            }
-
+            // エラーがあるかどうか
             if (parser.Errors.Count != 0)
             {
-                Assert.Fail();
+                var message = '\n' + string.Join('\n', parser.Errors);
+                Assert.Fail(message);
             }
 
             var actual = root.ToCode();
             Assert.That(actual, Is.EqualTo(code));
         }
+    }
+
+    [Test]
+    public void TestReadBooleanLiteralExpression()
+    {
+        var tests = new[]
+        {
+            ("true;", true),
+            ("false;", false),
+        };
+
+        foreach (var (input, value) in tests)
+        {
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+
+            // エラーがあるかどうか
+            if (parser.Errors.Count != 0)
+            {
+                var message = '\n' + string.Join('\n', parser.Errors);
+                Assert.Fail(message);
+            }
+
+            Assert.That(root.Statements.Count, Is.EqualTo(1), "文の数は1つでなければならない");
+
+            var statement = root.Statements[0] as ExpressionStatement;
+            if (statement == null)
+            {
+                Assert.Fail("statementがExpressionStatementではない");
+                return;
+            }
+
+            _TestBooleanLiteral(statement.Expression, value);
+        }
+    }
+
+    private void _TestBooleanLiteral(IExpression expression, bool value)
+    {
+        var booleanLiteral = expression as BooleanLiteral;
+        if (booleanLiteral == null)
+        {
+            Assert.Fail();
+            return;
+        }
+
+        Assert.That(booleanLiteral.Value, Is.EqualTo(value));
+        Assert.That(booleanLiteral.TokenLiteral(), Is.EqualTo(value.ToString().ToLower()));
     }
 
     private void _TestIdentifier(IExpression expression, string value)
@@ -234,6 +284,7 @@ public class ExpressionParserTest
             Assert.Fail("ExpressionがIdentifierではない");
             return;
         }
+
         Assert.That(ident.Value, Is.EqualTo(value));
         Assert.That(ident.TokenLiteral(), Is.EqualTo(value));
     }
@@ -247,6 +298,9 @@ public class ExpressionParserTest
                 break;
             case string stringValue:
                 _TestIdentifier(expression, stringValue);
+                break;
+            case bool boolValue:
+                _TestBooleanLiteral(expression, boolValue);
                 break;
             default:
                 Assert.Fail("予期しない型です");
@@ -262,7 +316,7 @@ public class ExpressionParserTest
             Assert.Fail("expressionがInfixExpressionではない");
             return;
         }
-        
+
         _TestLiteralExpression(infixExpression.Lhs, left);
         Assert.That(infixExpression.Operator, Is.EqualTo(op));
         _TestLiteralExpression(infixExpression.Rhs, right);
