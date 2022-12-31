@@ -130,7 +130,7 @@ public class ExpressionParserTest
     [Test]
     public void TestReadInfixExpression()
     {
-        var tests = new[]
+        var tests = new (string, object, string, object)[]
         {
             ("1 + 1", 1, "+", 1),
             ("1 - 1", 1, "-", 1),
@@ -140,6 +140,8 @@ public class ExpressionParserTest
             ("1 > 1", 1, ">", 1),
             ("1 == 1", 1, "==", 1),
             ("1 != 1", 1, "!=", 1),
+            ("true == false", true, "==", false),
+            ("true != false", true, "!=", false),
         };
 
         foreach (var (input, lhs, op, rhs) in tests)
@@ -165,16 +167,7 @@ public class ExpressionParserTest
                 return;
             }
 
-            var expression = statement.Expression as InfixExpression;
-            if (expression == null)
-            {
-                Assert.Fail("expressionがInFixExpression(中置式）ではない");
-                return;
-            }
-
-            _TestIntegerLiteral(expression.Lhs, lhs);
-            Assert.That(expression.Operator, Is.EqualTo(op));
-            _TestIntegerLiteral(expression.Rhs, rhs);
+            _TestInfixExpression(statement.Expression, lhs, op, rhs);
         }
     }
 
@@ -197,7 +190,7 @@ public class ExpressionParserTest
             Assert.Fail($"ident.TokenLiteral が {value} ではありません。");
         }
     }
-    
+
     [Test]
     public void TestOperatorPrecedenceParsing()
     {
@@ -212,6 +205,15 @@ public class ExpressionParserTest
             ("1 + 2; -3 * 4", "(1 + 2)\r\n((-3) * 4)"),
             ("5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"),
             ("3 + 4 * 5 == 3 * 1 + 4 * 5", "((3 + (4 * 5)) == ((3 * 1) + (4 * 5)))"),
+            ("true", "true"),
+            ("true == false", "(true == false)"),
+            ("1 > 2 == false", "((1 > 2) == false)"),
+            ("(1 + 2) * 3", "((1 + 2) * 3)"),
+            ("1 + (2 - 3)", "(1 + (2 - 3))"),
+            ("-(1 + 2)", "(-(1 + 2))"),
+            ("!(true == true)", "(!(true == true))"),
+            ("1 + (2 - 3) * 4", "(1 + ((2 - 3) * 4))"),
+            ("(1 + -(2 + 3)) * 4", "((1 + (-(2 + 3))) * 4)"),
         };
 
         foreach (var (input, code) in tests)
@@ -220,18 +222,221 @@ public class ExpressionParserTest
             var parser = new Parser(lexer);
             var root = parser.ParseProgram();
 
-            foreach (var error in parser.Errors)
-            {
-                Console.WriteLine(error);
-            }
-
+            // エラーがあるかどうか
             if (parser.Errors.Count != 0)
             {
-                Assert.Fail();
+                var message = '\n' + string.Join('\n', parser.Errors);
+                Assert.Fail(message);
             }
 
             var actual = root.ToCode();
             Assert.That(actual, Is.EqualTo(code));
         }
+    }
+
+    [Test]
+    public void TestReadBooleanLiteralExpression()
+    {
+        var tests = new[]
+        {
+            ("true;", true),
+            ("false;", false),
+        };
+
+        foreach (var (input, value) in tests)
+        {
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+
+            // エラーがあるかどうか
+            if (parser.Errors.Count != 0)
+            {
+                var message = '\n' + string.Join('\n', parser.Errors);
+                Assert.Fail(message);
+            }
+
+            Assert.That(root.Statements.Count, Is.EqualTo(1), "文の数は1つでなければならない");
+
+            var statement = root.Statements[0] as ExpressionStatement;
+            if (statement == null)
+            {
+                Assert.Fail("statementがExpressionStatementではない");
+                return;
+            }
+
+            _TestBooleanLiteral(statement.Expression, value);
+        }
+    }
+
+    private void _TestBooleanLiteral(IExpression expression, bool value)
+    {
+        var booleanLiteral = expression as BooleanLiteral;
+        if (booleanLiteral == null)
+        {
+            Assert.Fail();
+            return;
+        }
+
+        Assert.That(booleanLiteral.Value, Is.EqualTo(value));
+        Assert.That(booleanLiteral.TokenLiteral(), Is.EqualTo(value.ToString().ToLower()));
+    }
+
+    private void _TestIdentifier(IExpression expression, string value)
+    {
+        var ident = expression as Identifier;
+        if (ident == null)
+        {
+            Assert.Fail("ExpressionがIdentifierではない");
+            return;
+        }
+
+        Assert.That(ident.Value, Is.EqualTo(value));
+        Assert.That(ident.TokenLiteral(), Is.EqualTo(value));
+    }
+
+    private void _TestLiteralExpression(IExpression expression, object expected)
+    {
+        switch (expected)
+        {
+            case int intValue:
+                _TestIntegerLiteral(expression, intValue);
+                break;
+            case string stringValue:
+                _TestIdentifier(expression, stringValue);
+                break;
+            case bool boolValue:
+                _TestBooleanLiteral(expression, boolValue);
+                break;
+            default:
+                Assert.Fail("予期しない型です");
+                break;
+        }
+    }
+
+    private void _TestInfixExpression(IExpression expression, object left, string op, object right)
+    {
+        var infixExpression = expression as InfixExpression;
+        if (infixExpression == null)
+        {
+            Assert.Fail("expressionがInfixExpressionではない");
+            return;
+        }
+
+        _TestLiteralExpression(infixExpression.Lhs, left);
+        Assert.That(infixExpression.Operator, Is.EqualTo(op));
+        _TestLiteralExpression(infixExpression.Rhs, right);
+    }
+
+    [Test]
+    public void TestReadIfExpression()
+    {
+        var input = "if (x < y) { x }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っている");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        if (statement == null)
+        {
+            Assert.Fail("statementがExpressionStatementではない");
+            return;
+        }
+
+        var expression = statement.Expression as IfExpression;
+        if (expression == null)
+        {
+            Assert.Fail("expressionがIfExpressionではない");
+            return;
+        }
+
+        // If条件部分 (x < y)が正しくparseできてるか調べる
+        _TestInfixExpression(expression.Condition, "x", "<", "y");
+
+        // consequence部分をテスト
+        Assert.That(expression.Consequence.Statements.Count, Is.EqualTo(1));
+        var consequence = expression.Consequence.Statements[0] as ExpressionStatement;
+        if (consequence == null)
+        {
+            Assert.Fail("consequenceがExpressionStatementではない");
+            return;
+        }
+
+        _TestIdentifier(consequence.Expression, "x");
+
+        // else部分は存在しない
+        Assert.That(expression.Alternative, Is.Null);
+    }
+
+    [Test]
+    public void TestReadIfElseExpression()
+    {
+        var input = "if (x < y) { x } else { y; }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っている");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        if (statement == null)
+        {
+            Assert.Fail("statementがExpressionStatementではない");
+            return;
+        }
+
+        var expression = statement.Expression as IfExpression;
+        if (expression == null)
+        {
+            Assert.Fail("expressionがIfExpressionではない");
+            return;
+        }
+
+        // If条件部分 (x < y)が正しくparseできてるか調べる
+        _TestInfixExpression(expression.Condition, "x", "<", "y");
+
+        // consequence部分をテスト
+        Assert.That(expression.Consequence.Statements.Count, Is.EqualTo(1));
+        var consequence = expression.Consequence.Statements[0] as ExpressionStatement;
+        if (consequence == null)
+        {
+            Assert.Fail("consequenceがExpressionStatementではない");
+            return;
+        }
+
+        _TestIdentifier(consequence.Expression, "x");
+
+        // alternative部分をテスト
+        if (expression.Alternative == null)
+        {
+            Assert.Fail("alternative部分がnull");
+            return;
+        }
+
+        Assert.That(expression.Alternative.Statements.Count, Is.EqualTo(1));
+        var alternative = expression.Alternative.Statements[0] as ExpressionStatement;
+        if (alternative == null)
+        {
+            Assert.Fail("alternativeがExpressionStatementではない");
+            return;
+        }
+
+        _TestIdentifier(alternative.Expression, "y");
     }
 }
