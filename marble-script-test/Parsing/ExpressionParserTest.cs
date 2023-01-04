@@ -1,4 +1,5 @@
-﻿using Marble.Processor;
+﻿using System.Linq.Expressions;
+using Marble.Processor;
 using Marble.Processor.AST;
 using Marble.Processor.AST.Expression;
 using Marble.Processor.AST.Statements;
@@ -438,5 +439,39 @@ public class ExpressionParserTest
         }
 
         _TestIdentifier(alternative.Expression, "y");
+    }
+
+    [Test]
+    public void TestReadFunctionLiteral()
+    {
+        var input = "fn(x, y) { x + y; }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っています");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        Assert.That(statement, Is.Not.Null);
+
+        var expression = statement.Expression as FunctionLiteral;
+        Assert.That(expression, Is.Not.Null);
+
+        Assert.That(expression.Parameters.Count, Is.EqualTo(2), "関数パラメータは2つ");
+        _TestIdentifier(expression.Parameters[0], "x");
+        _TestIdentifier(expression.Parameters[1], "y");
+
+        Assert.That(expression.Body.Statements.Count, Is.EqualTo(1), "関数リテラルの本文の式の数は1つ");
+
+        var bodyStatement = expression.Body.Statements[0] as ExpressionStatement;
+        Assert.That(bodyStatement, Is.Not.Null);
+        _TestInfixExpression(bodyStatement.Expression, "x", "+", "y");
     }
 }
