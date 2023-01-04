@@ -249,6 +249,9 @@ namespace Marble.Processor.Parsing
 
             // 左ブロック文括弧 "{"
             PrefixParseFns.Add(TokenType.IF, ParseIfExpression);
+
+            // 関数リテラル "fn"
+            PrefixParseFns.Add(TokenType.FUNCTION, ParseFunctionLiteral);
         }
 
         private void RegisterInfixParseFns()
@@ -335,6 +338,62 @@ namespace Marble.Processor.Parsing
             expression.Alternative = ParseBlockStatement();
 
             return expression;
+        }
+
+        // 関数リテラルを解析する
+        private IExpression? ParseFunctionLiteral()
+        {
+            var fn = new FunctionLiteral()
+            {
+                Token = CurrentToken,
+            };
+
+            // fnの後は左括弧
+            if (!ExpectPeek(TokenType.LPAREN))
+                return null;
+
+            fn.Parameters = ParseParameters();
+
+            // 関数パラメータの次はLBRACE
+            if (!ExpectPeek(TokenType.LBRACE))
+                return null;
+
+            // 関数本体を解析する
+            fn.Body = ParseBlockStatement();
+            return fn;
+        }
+
+        private List<Identifier> ParseParameters()
+        {
+            var parameters = new List<Identifier>();
+
+            // ()で、パラメータがない時は、空リストを返す
+            if (NextToken.Type == TokenType.RPAREN)
+            {
+                ReadToken();
+                return parameters;
+            }
+
+            ReadToken(); // (を読み飛ばす
+
+            // 最初のパラメータをリストに追加する
+            parameters.Add(new Identifier(CurrentToken, CurrentToken.Literal));
+
+            // 2つ目以降のパラメータを、カンマが続く限りリストに追加し続ける
+            while (NextToken.Type == TokenType.COMMA)
+            {
+                // リストに追加済の識別子と、カンマトークンを読み飛ばす
+                ReadToken();
+                ReadToken();
+
+                // 識別子を追加する
+                parameters.Add(new Identifier(CurrentToken, CurrentToken.Literal));
+            }
+
+            if (!ExpectPeek(TokenType.RPAREN))
+                return null;
+
+            return parameters;
         }
 
         // 括弧で囲むと演算の優先順位を調整できるように
