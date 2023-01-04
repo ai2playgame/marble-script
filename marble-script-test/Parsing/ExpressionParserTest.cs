@@ -1,5 +1,4 @@
-﻿using System.Linq.Expressions;
-using Marble.Processor;
+﻿using Marble.Processor;
 using Marble.Processor.AST;
 using Marble.Processor.AST.Expression;
 using Marble.Processor.AST.Statements;
@@ -473,5 +472,33 @@ public class ExpressionParserTest
         var bodyStatement = expression.Body.Statements[0] as ExpressionStatement;
         Assert.That(bodyStatement, Is.Not.Null);
         _TestInfixExpression(bodyStatement.Expression, "x", "+", "y");
+    }
+
+    [Test]
+    public void TestReadFunctionParameters()
+    {
+        var tests = new[]
+        {
+            ("fn() {};", new string[] { }),
+            ("fn(x) {};", new string[] { "x" }),
+            ("fn(x, yy, zzz) {};", new string[] { "x", "yy", "zzz" }),
+        };
+
+        foreach (var (input, parameters) in tests)
+        {
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+
+            var statement = root.Statements[0] as ExpressionStatement;
+            var fn = statement.Expression as FunctionLiteral;
+
+            Assert.That(fn.Parameters.Count, Is.EqualTo(parameters.Length), "関数リテラルの引数の数が間違っています");
+
+            for (int i = 0; i < parameters.Length; ++i)
+            {
+                _TestIdentifier(fn.Parameters[i], parameters[i]);
+            }
+        }
     }
 }
