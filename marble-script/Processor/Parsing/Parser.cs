@@ -29,6 +29,7 @@ namespace Marble.Processor.Parsing
             { TokenType.MINUS, Precedence.SUM },
             { TokenType.SLASH, Precedence.PRODUCT },
             { TokenType.ASTERISK, Precedence.PRODUCT },
+            { TokenType.LPAREN, Precedence.CALL },
         };
 
         // 今見ているトークンの優先順位
@@ -125,20 +126,25 @@ namespace Marble.Processor.Parsing
             };
 
             if (!ExpectPeek(TokenType.IDENT))
+            {
                 return null;
+            }
 
             // Identifier(識別子): let文の左辺
             statement.Name = new Identifier(CurrentToken, CurrentToken.Literal);
 
             // 等号 =
             if (!ExpectPeek(TokenType.ASSIGN))
-                return null;
-
-            // Expression（let文の右辺に当たる式）
-            // TODO: let文の右辺式判定は未完成。一旦セミコロンまでを1Statementとして扱う
-            while (CurrentToken.Type != TokenType.SEMICOLON)
             {
-                // セミコロンが見つかるまで読み進める
+                return null;
+            }
+
+            // =を読み飛ばしてから、式を解析する
+            ReadToken();
+            statement.Value = ParseExpression(Precedence.LOWEST);
+            // セミコロンは必須ではない
+            if (NextToken.Type == TokenType.SEMICOLON)
+            {
                 ReadToken();
             }
 
@@ -155,10 +161,12 @@ namespace Marble.Processor.Parsing
             };
             ReadToken();
 
-            // TODO: 後で実装。一旦「;」まで読み取る実装にした
-            while (CurrentToken.Type != TokenType.SEMICOLON)
+            // 式を解析する
+            statement.ReturnValue = ParseExpression(Precedence.LOWEST);
+            
+            // セミコロンは必須ではない
+            if (NextToken.Type == TokenType.SEMICOLON)
             {
-                // セミコロンが見つかるまで読み進める
                 ReadToken();
             }
 
@@ -249,6 +257,9 @@ namespace Marble.Processor.Parsing
 
             // 左ブロック文括弧 "{"
             PrefixParseFns.Add(TokenType.IF, ParseIfExpression);
+
+            // 関数リテラル "fn"
+            PrefixParseFns.Add(TokenType.FUNCTION, ParseFunctionLiteral);
         }
 
         private void RegisterInfixParseFns()
@@ -262,6 +273,7 @@ namespace Marble.Processor.Parsing
             InfixParseFns.Add(TokenType.NOT_EQ, ParseInfixExpression);
             InfixParseFns.Add(TokenType.LT, ParseInfixExpression);
             InfixParseFns.Add(TokenType.GT, ParseInfixExpression);
+            InfixParseFns.Add(TokenType.LPAREN, ParseCallExpression);
         }
 
         // 識別子式を生成する解析関数
@@ -335,6 +347,62 @@ namespace Marble.Processor.Parsing
             expression.Alternative = ParseBlockStatement();
 
             return expression;
+        }
+
+        // 関数リテラルを解析する
+        private IExpression? ParseFunctionLiteral()
+        {
+            var fn = new FunctionLiteral()
+            {
+                Token = CurrentToken,
+            };
+
+            // fnの後は左括弧
+            if (!ExpectPeek(TokenType.LPAREN))
+                return null;
+
+            fn.Parameters = ParseParameters();
+
+            // 関数パラメータの次はLBRACE
+            if (!ExpectPeek(TokenType.LBRACE))
+                return null;
+
+            // 関数本体を解析する
+            fn.Body = ParseBlockStatement();
+            return fn;
+        }
+
+        private List<Identifier> ParseParameters()
+        {
+            var parameters = new List<Identifier>();
+
+            // ()で、パラメータがない時は、空リストを返す
+            if (NextToken.Type == TokenType.RPAREN)
+            {
+                ReadToken();
+                return parameters;
+            }
+
+            ReadToken(); // (を読み飛ばす
+
+            // 最初のパラメータをリストに追加する
+            parameters.Add(new Identifier(CurrentToken, CurrentToken.Literal));
+
+            // 2つ目以降のパラメータを、カンマが続く限りリストに追加し続ける
+            while (NextToken.Type == TokenType.COMMA)
+            {
+                // リストに追加済の識別子と、カンマトークンを読み飛ばす
+                ReadToken();
+                ReadToken();
+
+                // 識別子を追加する
+                parameters.Add(new Identifier(CurrentToken, CurrentToken.Literal));
+            }
+
+            if (!ExpectPeek(TokenType.RPAREN))
+                return null;
+
+            return parameters;
         }
 
         // 括弧で囲むと演算の優先順位を調整できるように
@@ -411,6 +479,48 @@ namespace Marble.Processor.Parsing
             expression.Rhs = ParseExpression(precedence);
 
             return expression;
+        }
+
+        public IExpression ParseCallExpression(IExpression fn)
+        {
+            var expression = new CallExpression()
+            {
+                Token = CurrentToken,
+                Function = fn,
+                Arguments = ParseCallArguments(),
+            };
+            return expression;
+        }
+
+        public List<IExpression> ParseCallArguments()
+        {
+            var args = new List<IExpression>();
+            
+            // (を読み飛ばす
+            ReadToken();
+            
+            // 引数なしの場合
+            if (CurrentToken.Type == TokenType.RPAREN) { return args; }
+            
+            // 引数ありの場合は、まず1つ目の引数を解析する
+            args.Add(ParseExpression(Precedence.LOWEST));
+            
+            // 2つ目以降の引数があればそれをリストに追加する
+            while (NextToken.Type == TokenType.COMMA)
+            {
+                // カンマ直前のトークンとカンマトークンを読み飛ばす
+                ReadToken();
+                ReadToken();
+                args.Add(ParseExpression(Precedence.LOWEST));
+            }
+            
+            // 閉じ括弧がなければエラー
+            if (!ExpectPeek(TokenType.RPAREN))
+            {
+                return null;
+            }
+            
+            return args;
         }
 
         private void AddNextTokenError(TokenType expected, TokenType actual)

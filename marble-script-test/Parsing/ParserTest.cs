@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Marble.Processor;
 using Marble.Processor.AST;
+using Marble.Processor.AST.Expression;
 using Marble.Processor.AST.Statements;
 using Marble.Processor.Parsing;
 using NuGet.Frameworks;
@@ -66,26 +67,38 @@ let xyz = 636363;";
     [Test]
     public void TestReadReturnStatement1()
     {
-        var input = @"return 5;
-return 10;
-return = 9332222;";
-
-        var lexer = new Lexer(input);
-        var parser = new Parser(lexer);
-        Root root = parser.ParseProgram();
-        
-        Assert.That(root.Statements.Count, Is.EqualTo(3), "return文の数が間違っています");
-
-        foreach (var statement in root.Statements)
+        var tests = new (string, object)[]
         {
-            var returnStatement = statement as ReturnStatement;
-            if (returnStatement == null)
+            ("return 5;", 5),
+            ("return true;", true),
+            ("return x;", "x"),
+        };
+        foreach (var (input, expected) in tests)
+        {
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+            
+            // エラーがあるかどうか
+            if (parser.Errors.Count != 0)
             {
-                Assert.Fail("statementがReturnStatementではない");
-                return;
+                var message = '\n' + string.Join('\n', parser.Errors);
+                Assert.Fail(message);
             }
-            Assert.That(returnStatement.TokenLiteral(), Is.EqualTo("return"),
-                "returnのリテラルが間違っている");
+            
+            Assert.That(root.Statements.Count, Is.EqualTo(1));
+
+            var returnStatement = root.Statements[0] as ReturnStatement;
+            Assert.That(returnStatement, Is.Not.Null);
+            
+            Assert.That(returnStatement.TokenLiteral(), Is.EqualTo("return"));
+            
+            _TestLiteralExpression(returnStatement.ReturnValue, expected);
         }
+    }
+
+    private void _TestLiteralExpression(IExpression expression, object expected)
+    {
+        ExpressionParserTest._TestLiteralExpression(expression, expected);
     }
 }

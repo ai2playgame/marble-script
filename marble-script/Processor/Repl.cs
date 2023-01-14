@@ -1,4 +1,6 @@
-﻿namespace Marble.Processor;
+﻿using Marble.Processor.Parsing;
+
+namespace Marble.Processor;
 
 // REPL: Read-Eval-Print Loop
 // インタプリタ言語において、対話的にプログラムを実行するもの
@@ -14,15 +16,24 @@ public class Repl
 
             var input = Console.ReadLine();
             if (string.IsNullOrEmpty(input))
+            {
                 return;
+            }
 
             var lexer = new Lexer(input);
-            for (var token = lexer.NextToken();
-                 token.Type != TokenType.EOF;
-                 token = lexer.NextToken())
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+
+            if (parser.Errors.Count > 0)
             {
-                Console.WriteLine($"{{ Type: {token.Type}, Literal: {token.Literal} }}");
+                foreach (var error in parser.Errors)
+                {
+                    Console.WriteLine($"\t{error}");
+                }
+                continue;
             }
+            
+            Console.WriteLine(root.ToCode());
         }
     }
 }

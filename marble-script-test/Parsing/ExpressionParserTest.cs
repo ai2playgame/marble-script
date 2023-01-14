@@ -171,7 +171,7 @@ public class ExpressionParserTest
         }
     }
 
-    public void _TestIntegerLiteral(IExpression expression, int value)
+    public static void _TestIntegerLiteral(IExpression expression, int value)
     {
         var integerLiteral = expression as IntegerLiteral;
         if (integerLiteral == null)
@@ -214,6 +214,9 @@ public class ExpressionParserTest
             ("!(true == true)", "(!(true == true))"),
             ("1 + (2 - 3) * 4", "(1 + ((2 - 3) * 4))"),
             ("(1 + -(2 + 3)) * 4", "((1 + (-(2 + 3))) * 4)"),
+            ("add(1, 2) + 3 > 4", "((add(1, 2) + 3) > 4)"),
+            ("add(x, y, 1, 2*3, 4+5, add(z) )", "add(x, y, 1, (2 * 3), (4 + 5), add(z))"),
+            ("add(1 + 2 - 3 * 4 / 5 + 6)", "add((((1 + 2) - ((3 * 4) / 5)) + 6))"),
         };
 
         foreach (var (input, code) in tests)
@@ -269,7 +272,7 @@ public class ExpressionParserTest
         }
     }
 
-    private void _TestBooleanLiteral(IExpression expression, bool value)
+    private static void _TestBooleanLiteral(IExpression expression, bool value)
     {
         var booleanLiteral = expression as BooleanLiteral;
         if (booleanLiteral == null)
@@ -282,7 +285,7 @@ public class ExpressionParserTest
         Assert.That(booleanLiteral.TokenLiteral(), Is.EqualTo(value.ToString().ToLower()));
     }
 
-    private void _TestIdentifier(IExpression expression, string value)
+    private static void _TestIdentifier(IExpression expression, string value)
     {
         var ident = expression as Identifier;
         if (ident == null)
@@ -295,7 +298,7 @@ public class ExpressionParserTest
         Assert.That(ident.TokenLiteral(), Is.EqualTo(value));
     }
 
-    private void _TestLiteralExpression(IExpression expression, object expected)
+    public static void _TestLiteralExpression(IExpression expression, object expected)
     {
         switch (expected)
         {
@@ -438,5 +441,99 @@ public class ExpressionParserTest
         }
 
         _TestIdentifier(alternative.Expression, "y");
+    }
+
+    [Test]
+    public void TestReadFunctionLiteral()
+    {
+        var input = "fn(x, y) { x + y; }";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っています");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        Assert.That(statement, Is.Not.Null);
+
+        var expression = statement.Expression as FunctionLiteral;
+        Assert.That(expression, Is.Not.Null);
+
+        Assert.That(expression.Parameters.Count, Is.EqualTo(2), "関数パラメータは2つ");
+        _TestIdentifier(expression.Parameters[0], "x");
+        _TestIdentifier(expression.Parameters[1], "y");
+
+        Assert.That(expression.Body.Statements.Count, Is.EqualTo(1), "関数リテラルの本文の式の数は1つ");
+
+        var bodyStatement = expression.Body.Statements[0] as ExpressionStatement;
+        Assert.That(bodyStatement, Is.Not.Null);
+        _TestInfixExpression(bodyStatement.Expression, "x", "+", "y");
+    }
+
+    [Test]
+    public void TestReadFunctionParameters()
+    {
+        var tests = new[]
+        {
+            ("fn() {};", new string[] { }),
+            ("fn(x) {};", new string[] { "x" }),
+            ("fn(x, yy, zzz) {};", new string[] { "x", "yy", "zzz" }),
+        };
+
+        foreach (var (input, parameters) in tests)
+        {
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
+            var root = parser.ParseProgram();
+
+            var statement = root.Statements[0] as ExpressionStatement;
+            var fn = statement.Expression as FunctionLiteral;
+
+            Assert.That(fn.Parameters.Count, Is.EqualTo(parameters.Length), "関数リテラルの引数の数が間違っています");
+
+            for (int i = 0; i < parameters.Length; ++i)
+            {
+                _TestIdentifier(fn.Parameters[i], parameters[i]);
+            }
+        }
+    }
+
+    [Test]
+    public void TestCallExpression()
+    {
+        var input = "add(1, 2 * 3, 4 + 5);";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+        
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+        
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っています。");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        Assert.That(statement, Is.Not.Null);
+
+        var expression = statement.Expression as CallExpression;
+        Assert.That(expression, Is.Not.Null);
+        
+        _TestIdentifier(expression.Function, "add");
+        
+        Assert.That(expression.Arguments.Count, Is.EqualTo(3), "関数リテラルの引数の数が間違っています。");
+        
+        _TestLiteralExpression(expression.Arguments[0], 1);
+        _TestInfixExpression(expression.Arguments[1], 2, "*", 3);
+        _TestInfixExpression(expression.Arguments[2], 4, "+", 5);
     }
 }
