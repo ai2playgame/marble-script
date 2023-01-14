@@ -171,7 +171,7 @@ public class ExpressionParserTest
         }
     }
 
-    public void _TestIntegerLiteral(IExpression expression, int value)
+    public static void _TestIntegerLiteral(IExpression expression, int value)
     {
         var integerLiteral = expression as IntegerLiteral;
         if (integerLiteral == null)
@@ -272,7 +272,7 @@ public class ExpressionParserTest
         }
     }
 
-    private void _TestBooleanLiteral(IExpression expression, bool value)
+    private static void _TestBooleanLiteral(IExpression expression, bool value)
     {
         var booleanLiteral = expression as BooleanLiteral;
         if (booleanLiteral == null)
@@ -285,7 +285,7 @@ public class ExpressionParserTest
         Assert.That(booleanLiteral.TokenLiteral(), Is.EqualTo(value.ToString().ToLower()));
     }
 
-    private void _TestIdentifier(IExpression expression, string value)
+    private static void _TestIdentifier(IExpression expression, string value)
     {
         var ident = expression as Identifier;
         if (ident == null)
@@ -298,7 +298,7 @@ public class ExpressionParserTest
         Assert.That(ident.TokenLiteral(), Is.EqualTo(value));
     }
 
-    private void _TestLiteralExpression(IExpression expression, object expected)
+    public static void _TestLiteralExpression(IExpression expression, object expected)
     {
         switch (expected)
         {

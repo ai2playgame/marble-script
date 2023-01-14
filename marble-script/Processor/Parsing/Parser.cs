@@ -126,20 +126,25 @@ namespace Marble.Processor.Parsing
             };
 
             if (!ExpectPeek(TokenType.IDENT))
+            {
                 return null;
+            }
 
             // Identifier(識別子): let文の左辺
             statement.Name = new Identifier(CurrentToken, CurrentToken.Literal);
 
             // 等号 =
             if (!ExpectPeek(TokenType.ASSIGN))
-                return null;
-
-            // Expression（let文の右辺に当たる式）
-            // TODO: let文の右辺式判定は未完成。一旦セミコロンまでを1Statementとして扱う
-            while (CurrentToken.Type != TokenType.SEMICOLON)
             {
-                // セミコロンが見つかるまで読み進める
+                return null;
+            }
+
+            // =を読み飛ばしてから、式を解析する
+            ReadToken();
+            statement.Value = ParseExpression(Precedence.LOWEST);
+            // セミコロンは必須ではない
+            if (NextToken.Type == TokenType.SEMICOLON)
+            {
                 ReadToken();
             }
 
@@ -156,10 +161,12 @@ namespace Marble.Processor.Parsing
             };
             ReadToken();
 
-            // TODO: 後で実装。一旦「;」まで読み取る実装にした
-            while (CurrentToken.Type != TokenType.SEMICOLON)
+            // 式を解析する
+            statement.ReturnValue = ParseExpression(Precedence.LOWEST);
+            
+            // セミコロンは必須ではない
+            if (NextToken.Type == TokenType.SEMICOLON)
             {
-                // セミコロンが見つかるまで読み進める
                 ReadToken();
             }
 
