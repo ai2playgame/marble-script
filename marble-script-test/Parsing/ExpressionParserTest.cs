@@ -214,6 +214,9 @@ public class ExpressionParserTest
             ("!(true == true)", "(!(true == true))"),
             ("1 + (2 - 3) * 4", "(1 + ((2 - 3) * 4))"),
             ("(1 + -(2 + 3)) * 4", "((1 + (-(2 + 3))) * 4)"),
+            ("add(1, 2) + 3 > 4", "((add(1, 2) + 3) > 4)"),
+            ("add(x, y, 1, 2*3, 4+5, add(z) )", "add(x, y, 1, (2 * 3), (4 + 5), add(z))"),
+            ("add(1 + 2 - 3 * 4 / 5 + 6)", "add((((1 + 2) - ((3 * 4) / 5)) + 6))"),
         };
 
         foreach (var (input, code) in tests)
@@ -500,5 +503,37 @@ public class ExpressionParserTest
                 _TestIdentifier(fn.Parameters[i], parameters[i]);
             }
         }
+    }
+
+    [Test]
+    public void TestCallExpression()
+    {
+        var input = "add(1, 2 * 3, 4 + 5);";
+        var lexer = new Lexer(input);
+        var parser = new Parser(lexer);
+        var root = parser.ParseProgram();
+        
+        // エラーがあるかどうか
+        if (parser.Errors.Count != 0)
+        {
+            var message = '\n' + string.Join('\n', parser.Errors);
+            Assert.Fail(message);
+        }
+        
+        Assert.That(root.Statements.Count, Is.EqualTo(1), "Root.Statementsの数が間違っています。");
+
+        var statement = root.Statements[0] as ExpressionStatement;
+        Assert.That(statement, Is.Not.Null);
+
+        var expression = statement.Expression as CallExpression;
+        Assert.That(expression, Is.Not.Null);
+        
+        _TestIdentifier(expression.Function, "add");
+        
+        Assert.That(expression.Arguments.Count, Is.EqualTo(3), "関数リテラルの引数の数が間違っています。");
+        
+        _TestLiteralExpression(expression.Arguments[0], 1);
+        _TestInfixExpression(expression.Arguments[1], 2, "*", 3);
+        _TestInfixExpression(expression.Arguments[2], 4, "+", 5);
     }
 }

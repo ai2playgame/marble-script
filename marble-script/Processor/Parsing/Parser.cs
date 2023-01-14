@@ -29,6 +29,7 @@ namespace Marble.Processor.Parsing
             { TokenType.MINUS, Precedence.SUM },
             { TokenType.SLASH, Precedence.PRODUCT },
             { TokenType.ASTERISK, Precedence.PRODUCT },
+            { TokenType.LPAREN, Precedence.CALL },
         };
 
         // 今見ているトークンの優先順位
@@ -265,6 +266,7 @@ namespace Marble.Processor.Parsing
             InfixParseFns.Add(TokenType.NOT_EQ, ParseInfixExpression);
             InfixParseFns.Add(TokenType.LT, ParseInfixExpression);
             InfixParseFns.Add(TokenType.GT, ParseInfixExpression);
+            InfixParseFns.Add(TokenType.LPAREN, ParseCallExpression);
         }
 
         // 識別子式を生成する解析関数
@@ -470,6 +472,48 @@ namespace Marble.Processor.Parsing
             expression.Rhs = ParseExpression(precedence);
 
             return expression;
+        }
+
+        public IExpression ParseCallExpression(IExpression fn)
+        {
+            var expression = new CallExpression()
+            {
+                Token = CurrentToken,
+                Function = fn,
+                Arguments = ParseCallArguments(),
+            };
+            return expression;
+        }
+
+        public List<IExpression> ParseCallArguments()
+        {
+            var args = new List<IExpression>();
+            
+            // (を読み飛ばす
+            ReadToken();
+            
+            // 引数なしの場合
+            if (CurrentToken.Type == TokenType.RPAREN) { return args; }
+            
+            // 引数ありの場合は、まず1つ目の引数を解析する
+            args.Add(ParseExpression(Precedence.LOWEST));
+            
+            // 2つ目以降の引数があればそれをリストに追加する
+            while (NextToken.Type == TokenType.COMMA)
+            {
+                // カンマ直前のトークンとカンマトークンを読み飛ばす
+                ReadToken();
+                ReadToken();
+                args.Add(ParseExpression(Precedence.LOWEST));
+            }
+            
+            // 閉じ括弧がなければエラー
+            if (!ExpectPeek(TokenType.RPAREN))
+            {
+                return null;
+            }
+            
+            return args;
         }
 
         private void AddNextTokenError(TokenType expected, TokenType actual)
